@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Punto de fluencia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- Versión web instalable (pantalla de inicio en iPhone y Android). En la app nativa no estorba. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#221D25" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fluencia">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+body{margin:0;padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+/* Layout: columna móvil de una mano, cabecera de perfil arriba y navegación por tareas abajo. La curva esfuerzo-deformación es la marca. */
+:root{
+  --bg:#F2F5EF;--surface:#FFFFFF;--surface-2:#E8ECE4;--line:#CFD6CA;--ink:#241A26;--muted:#625866;
+  --accent:#7A2E63;--accent-ink:#FFFFFF;--accent-soft:#F2E3EE;
+  --good:#1E7B4F;--good-soft:#DDF1E6;--warn:#8F5600;--warn-soft:#F8E8CC;--warn-mark:#C98A1B;--bad:#AE342D;--bad-soft:#F9E0DD;--neutral-mark:#8A8F88;
+  --display:"Familjen Grotesk","Trebuchet MS",sans-serif;--body:"Figtree","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171419;--surface:#221D25;--surface-2:#2D2730;--line:#433B47;--ink:#F1EBF1;--muted:#B5A9B6;
+  --accent:#E79BD1;--accent-ink:#2A1025;--accent-soft:#40283B;
+  --good:#72D7A3;--good-soft:#1C3A2B;--warn:#EDBA69;--warn-soft:#44331A;--warn-mark:#E0A84C;--bad:#F59289;--bad-soft:#4A2522;--neutral-mark:#8F8993;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171419;--surface:#221D25;--surface-2:#2D2730;--line:#433B47;--ink:#F1EBF1;--muted:#B5A9B6;
+  --accent:#E79BD1;--accent-ink:#2A1025;--accent-soft:#40283B;
+  --good:#72D7A3;--good-soft:#1C3A2B;--warn:#EDBA69;--warn-soft:#44331A;--warn-mark:#E0A84C;--bad:#F59289;--bad-soft:#4A2522;--neutral-mark:#8F8993;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:120px;scroll-padding-bottom:90px}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:1.6rem}h2{font-size:1.15rem}h3{font-size:1rem}
+p{margin:0}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top-in{padding-block:10px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:8px;align-items:center;font:700 1.02rem var(--display)}
+.brand svg{width:30px;height:22px;flex:none}
+.viewas{display:flex;align-items:center;gap:6px;font-size:.84rem;color:var(--muted);min-width:0;flex:1 1 210px;justify-content:flex-end}
+.viewas select{min-width:0;flex:1;max-width:280px}
+select,input[type=text],input[type=date],input[type=number],textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:42px;width:100%}
+textarea{min-height:76px;resize:vertical}
+.notice{background:var(--accent-soft);font-size:.86rem}
+.notice-in{padding-block:8px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.notice p{flex:1 1 240px;min-width:0}
+main{padding-block:20px 112px;display:grid;gap:22px}
+.section{display:grid;gap:12px}
+.lede{color:var(--muted);max-width:60ch}
+.head{display:grid;gap:4px}
+.eyebrow{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.picker{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--muted);font-weight:600}
+.picker select{min-height:36px;padding:5px 8px;width:auto;max-width:100%;font-weight:600;color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:12px;min-width:0}
+.list{display:grid;gap:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:9px;min-width:0}
+.item.stale{border-left:4px solid var(--warn-mark)}
+.item .txt{font-weight:500;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.84rem;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:2px 7px;font-size:.76rem;font-weight:600;background:var(--surface-2);color:var(--ink)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip.good{background:var(--good-soft);color:var(--good)}.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;border-radius:6px;padding:9px 14px;min-height:42px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{min-height:34px;padding:5px 10px;font-size:.86rem}
+.btn[disabled]{opacity:.55;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.between{justify-content:space-between}
+.field{display:grid;gap:5px;font-size:.88rem;font-weight:500;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:9px 11px;font-size:.86rem}
+.err{color:var(--bad);font-size:.88rem}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filter{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px;font-size:.86rem;cursor:pointer}
+.filter[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bottom .wrap{display:flex;gap:4px;padding-block:6px}
+.bottom .wrap:has(.tab:nth-child(5)){gap:2px;padding-inline:max(6px,env(safe-area-inset-left,0px))}
+.tab{flex:1;min-width:0;border:0;background:transparent;border-radius:6px;padding:10px 2px;font-weight:600;font-size:.84rem;color:var(--muted);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab[aria-current=page]{background:var(--accent-soft);color:var(--accent)}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale label{position:relative;display:block}
+.scale input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;margin:0}
+.scale span{display:grid;place-items:center;height:46px;border:1px solid var(--line);border-radius:6px;font-weight:600;font-variant-numeric:tabular-nums}
+.scale input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.scale input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.ends{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+.q{display:grid;gap:7px}
+.q legend{font-weight:500;padding:0;margin-bottom:7px}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+.big{font:700 2rem/1 var(--display);font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.stat{display:grid;gap:3px;min-width:0}
+.stat small{color:var(--muted);font-size:.82rem}
+.stack{display:flex;gap:2px;height:14px}
+.stack i{display:block;min-width:4px}
+.stack i:first-child{border-radius:4px 0 0 4px}.stack i:last-child{border-radius:0 4px 4px 0}
+.stack i:only-child{border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend b{font-variant-numeric:tabular-nums}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.score{display:grid;gap:5px}
+.score .l{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.score .l b{font-variant-numeric:tabular-nums}
+.meter{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.trend{display:grid;gap:14px}
+.trend figure{margin:0;display:grid;gap:4px;min-width:0}
+.trend figcaption{font-size:.88rem;font-weight:500}
+.trend svg{width:100%;height:auto;display:block}
+.trend text{fill:var(--muted);font:12px var(--body)}
+.trend .val{fill:var(--ink);font-weight:600}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600}
+td.wrapcell,th.wrapcell{white-space:normal;min-width:180px}
+details summary{cursor:pointer;font-weight:600;color:var(--accent);font-size:.9rem}
+details[open] summary{margin-bottom:10px}
+.client{display:grid;gap:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 13px;border-radius:6px;font-size:.9rem;z-index:20;max-width:min(92vw,520px);width:max-content}
+.privacy{font-size:.86rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.empty{color:var(--muted);padding:12px;border:1px dashed var(--line);border-radius:8px}
+.who{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--muted);min-width:0;flex:1 1 210px;justify-content:flex-end;flex-wrap:wrap}
+.who b{color:var(--ink);font-weight:600}
+.notice strong{font-weight:700}
+.sync{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* El QR va siempre en negro sobre blanco, también en modo oscuro, para que las cámaras lo lean. */
+.qr{background:#fff;border-radius:8px;padding:8px;width:min(100%,280px);margin:0 auto;border:1px solid var(--line)}
+.qr svg{display:block;width:100%;height:auto}
+.link{font-size:.78rem;color:var(--muted);overflow-wrap:anywhere;text-align:center}
+.center{justify-content:center}
+ol.qs{margin:0;padding-left:1.3em;display:grid;gap:4px}
+.confirm{background:var(--warn-soft);border-radius:6px;padding:11px;display:grid;gap:10px;color:var(--ink)}
+.preview{border:2px dashed var(--accent)}
+@media (prefers-reduced-motion:no-preference){.tab,.btn{transition:background-color .12s}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap top-in">
+  <div class="brand"><svg viewBox="0 0 60 44" aria-hidden="true"><path d="M3 41 L24 11 C30 5 42 6 57 9" fill="none" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/><circle cx="24" cy="11" r="5" fill="var(--accent)"/></svg><span>Punto de fluencia</span></div>
+  <label class="viewas" for="viewas" hidden>Ver como <select id="viewas"></select></label>
+  <div class="who" id="who" hidden></div>
+</div>
+</header>
+<div class="notice" id="notice" hidden><div class="wrap notice-in"><p id="notice-txt"></p><span id="reset"></span></div></div>
+<main class="wrap" id="main"></main>
+<nav class="bottom" id="nav" aria-label="Secciones"><div class="wrap" id="tabs"></div></nav>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="config.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script>
+// Perfiles: consultora (todas las cuentas, administra) y CEO o responsable (su cuenta, solo lectura,
+// entrega y cierra la encuesta). Los integrantes no usan la app: responden por QR, sin identificarse.
+const MIN=5,MAXQ=6;
+// Dónde corre: app nativa (Capacitor), web ya agregada a la pantalla de inicio, o navegador.
+const NATIVA=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+const INSTALADA=NATIVA||matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let pedirInstalar=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();pedirInstalar=e;if(typeof modo==='function'&&modo()==='login')render()});
+if(!NATIVA&&'serviceWorker'in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+const ROL={consultora:'Consultora',ceo:'CEO / responsable'};
+const ST={abierto:'Abierto',cumplido:'Cumplido',no_cumplido:'No cumplido',descartado:'Descartado'};
+const day=n=>{const d=new Date();d.setDate(d.getDate()+n);const p=x=>String(x).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
+const today=()=>day(0);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fdate=s=>s?new Date(s+'T12:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'Sin fecha';
+const uid=()=>{try{return crypto.randomUUID().replace(/-/g,'')}catch(e){let s='';while(s.length<32)s+=Math.random().toString(36).slice(2);return s.slice(0,32)}};
+function dist(n,mean){const b=Math.min(5,Math.floor(mean)),up=Math.round((mean-b)*n),d=[0,0,0,0,0];d[b-1]+=n-up;if(up)d[Math.min(4,b)]+=up;return d}
+const QS=['Tengo claro qué se espera de mí en este período.','En este equipo se puede decir lo que no funciona.','Los acuerdos que tomamos se cumplen.'];
+function seed(){
+  const R=(k,n,means,ab,size)=>({k,label:'Encuesta '+k,opened:day(ab),closed:day(ab+7),n,expected:size,questions:[...QS],dist:n>=MIN?means.map(m=>dist(n,m)):null});
+  const A=(id,type,text,owner,meeting,due,status,carried)=>({id,type,text,owner,meeting:day(meeting),due:due==null?null:day(due),status,carried});
+  const open=(k,n,means,ab)=>({k,label:'Encuesta '+k,opened:day(ab),token:uid(),questions:[...QS],n,counts:means.map(m=>dist(n,m))});
+  return{activeOrg:'o1',seq:100,orgs:[
+   {id:'o1',name:'Jardín Semilla',size:10,lastMeeting:day(-14),nextQuestions:[...QS],
+    items:[A('i1','acuerdo','Publicar el calendario de turnos cada viernes antes de las 16:00.','Coordinación',-42,-3,'abierto',2),
+     A('i2','acuerdo','Documentar el protocolo de ingreso de nuevas personas al equipo.','Dirección',-28,-6,'abierto',1),
+     A('i3','decision','Los cambios de turno los aprueba coordinación, sin pasar por dirección.','Coordinación',-28,-20,'cumplido',0),
+     A('i4','acuerdo','Traer a la reunión un caso real para practicar feedback.','Equipo de sala',-14,5,'abierto',0),
+     A('i5','acuerdo','Responder consultas administrativas en un máximo de 24 horas.','Administración',-28,-14,'cumplido',0),
+     A('i7','acuerdo','Preparar una inducción de dos páginas para quienes se incorporan.','Dirección',-28,-10,'no_cumplido',1)],
+    rounds:[R(1,7,[3.1,2.7,2.6],-56,10),R(2,8,[3.4,2.9,2.9],-42,10),R(3,6,[3.7,3.3,3.2],-28,10)],open:open(4,4,[3.75,3.5,3.25],-3)},
+   {id:'o2',name:'Cola Alegre',size:6,lastMeeting:day(-10),nextQuestions:[...QS],
+    items:[A('j1','acuerdo','Cerrar la caja con el mismo procedimiento en ambas sucursales.','Administración',-24,-2,'abierto',1),
+     A('j2','decision','Compras define los pedidos a proveedores de la semana.','Compras',-24,-15,'cumplido',0),
+     A('j3','acuerdo','Actualizar el inventario de alimentos cada lunes.','Bodega',-10,4,'abierto',0)],
+    rounds:[R(1,5,[3.2,2.6,2.4],-38,6),R(2,3,[3.3,3,2.7],-24,6)],open:open(3,2,[3.5,3,3],-2)}
+  ]};
+}
+// Modo demo: datos ficticios solo en este teléfono (KEY). Modo conectado: copia local del servidor (CACHE) y cola de cambios (COLA).
+const API=window.PF_API_URL||'',KEY='pf-demo-v2',SES='pf-sesion-v1',CACHE='pf-cache-v2',COLA='pf-cola-v2';
+const leerLS=(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d}catch(e){return d}};
+const guardarLS=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+// Versión 1: sus datos tienen otra forma y su cola usa acciones que ya no existen.
+['punto-fluencia-prototipo-v1','pf-cache-v1','pf-cola-v1'].forEach(k=>guardarLS(k,null));
+let sesion=leerLS(SES,null),cola=leerLS(COLA,[]);
+const modo=()=>!sesion?'login':sesion.demo?'demo':'live',live=()=>modo()==='live';
+function load(){if(modo()==='demo')return leerLS(KEY,null)||seed();return live()?leerLS(CACHE,null):null}
+function save(){if(modo()==='demo')guardarLS(KEY,S);else if(live())guardarLS(CACHE,S)}
+let S=load();
+const ui={me:'consultora',tab:'resumen',filter:'todos',confirmReset:false,confirmClose:false,preview:false,formErr:'',pulseErr:'',cfgErr:'',exportText:null,exportName:'',confirmLogout:false,loginErr:'',loginCode:'',loginBusy:false};
+function yoUI(){if(live()&&S&&S.yo)ui.me=S.yo.rol==='consultora'?'consultora':'ceo:'+((S.orgs[0]||{}).id||'')}
+yoUI();
+const role=()=>ui.me==='consultora'?'consultora':'ceo';
+const isC=()=>role()==='consultora';
+const org=()=>isC()?(S.orgs.find(o=>o.id===S.activeOrg)||S.orgs[0]):S.orgs.find(o=>o.id===ui.me.slice(4))||S.orgs[0];
+const TABS={consultora:[['resumen','Resumen'],['panel','Cliente'],['acuerdos','Acuerdos'],['reunion','Reunión'],['encuesta','Encuesta']],ceo:[['panel','Resultados'],['encuesta','Encuesta'],['acuerdos','Acuerdos']]};
+const stale=i=>i.status==='abierto'&&(i.carried>0||(i.due&&i.due<today()));
+const lastR=o=>o.rounds[o.rounds.length-1];
+const avg=d=>{const n=d.reduce((a,b)=>a+b,0);return n?d.reduce((a,c,i)=>a+c*(i+1),0)/n:0};
+const general=r=>r&&r.dist&&r.dist.length?r.dist.reduce((a,d)=>a+avg(d),0)/r.dist.length:null;
+const f1=x=>x.toFixed(1).replace('.',',');
+const pct=(n,t)=>t?Math.round(n/t*100)+'%':null;
+// El QR lleva a la encuesta del sitio web; el enlace va tras «#» para que no quede en registros del sitio.
+const WEB=window.PF_WEB_URL||'';
+const surveyUrl=o=>WEB?WEB+'encuesta.html#r='+encodeURIComponent(o.open.token):(API||'https://script.google.com/macros/s/demo/exec')+'?r='+encodeURIComponent(o.open.token);
+function counts(o){const c={cumplido:0,al_dia:0,arrastrado:0,no_cumplido:0};o.items.forEach(i=>{if(i.status==='cumplido')c.cumplido++;else if(i.status==='no_cumplido')c.no_cumplido++;else if(i.status==='abierto')stale(i)?c.arrastrado++:c.al_dia++});return c}
+function statusBar(o){const c=counts(o),t=c.cumplido+c.al_dia+c.arrastrado+c.no_cumplido,seg=[['Cumplidos',c.cumplido,'var(--good)'],['Abiertos al día',c.al_dia,'var(--neutral-mark)'],['Se arrastran',c.arrastrado,'var(--warn-mark)'],['No cumplidos',c.no_cumplido,'var(--bad)']];
+  return`<div class="stack" role="img" aria-label="${seg.map(s=>s[0]+': '+s[1]).join(', ')}">${seg.filter(s=>s[1]).map(s=>`<i title="${s[0]}: ${s[1]}" style="flex:${s[1]} 0 0;background:${s[2]}"></i>`).join('')}</div><div class="legend">${seg.map(s=>`<span><i class="dot" style="background:${s[2]}"></i>${s[0]} <b>${s[1]}</b></span>`).join('')}</div>`+(t?'':'<p class="empty">Aún no hay acuerdos.</p>')}
+function head(o,title,lede){const pick=isC()&&S.orgs.length>1?`<label class="picker" for="pick-org">Cliente <select id="pick-org">${S.orgs.map(x=>`<option value="${x.id}" ${x.id===o.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>`:`<span class="eyebrow">${esc(o.name)}</span>`;
+  return`<div class="head">${pick}<h1>${title}</h1>${lede?`<p class="lede">${lede}</p>`:''}</div>`}
+function itemCard(o,i){const can=isC(),late=i.status==='abierto'&&i.due&&i.due<today();
+  return`<article class="item ${stale(i)?'stale':''}"><div class="meta"><span class="chip">${i.type==='decision'?'Decisión':'Acuerdo'}</span>${i.carried&&i.status==='abierto'?`<span class="chip warn">Se arrastra hace ${i.carried} ${i.carried===1?'reunión':'reuniones'}</span>`:''}${late?'<span class="chip bad">Vencido</span>':''}</div><p class="txt">${esc(i.text)}</p><div class="meta"><span>${esc(i.owner||'Sin responsable')}</span><span>Compromiso: ${fdate(i.due)}</span></div>${can?`<label class="field" for="st-${i.id}">Estado<select id="st-${i.id}" data-status="${i.id}">${Object.entries(ST).map(([k,v])=>`<option value="${k}" ${k===i.status?'selected':''}>${v}</option>`).join('')}</select></label>`:`<div class="meta"><span class="chip ${i.status==='cumplido'?'good':i.status==='no_cumplido'?'bad':''}">${ST[i.status]}</span></div>`}</article>`}
+function addForm(){return`<details class="panel" ${ui.formErr?'open':''}><summary>Agregar decisión o acuerdo</summary><form id="add" class="section" novalidate>
+  <div class="warnbox">No incluyas nombres de niños, datos de familias, salud ni información personal.</div>
+  <div class="grid2"><label class="field" for="f-type">Tipo<select id="f-type"><option value="acuerdo">Acuerdo</option><option value="decision">Decisión</option></select></label>
+  <label class="field" for="f-owner">Responsable (área o cargo)<input type="text" id="f-owner" maxlength="80" placeholder="Por ejemplo: Coordinación"></label></div>
+  <label class="field" for="f-text">Descripción<textarea id="f-text" maxlength="240" placeholder="Qué se hará o qué se decidió"></textarea></label>
+  <label class="field" for="f-due">Fecha de compromiso<input type="date" id="f-due" value="${day(14)}"></label>
+  ${ui.formErr?`<p class="err">${esc(ui.formErr)}</p>`:''}<div class="row"><button class="btn" type="submit">Guardar</button></div></form></details>`}
+function scores(r){if(!r)return'<p class="empty">Todavía no hay encuestas cerradas.</p>';
+  if(r.n<MIN)return`<p class="empty"><strong>Sin respuestas suficientes.</strong> ${esc(r.label)} tuvo ${r.n} de ${MIN} respuestas mínimas, así que no se guardaron resultados.</p>`;
+  if(!r.dist)return`<p class="empty">${esc(r.label)} cerrada. Resultados pendientes de sincronizar.</p>`;
+  const p=pct(r.n,r.expected);
+  return`<div class="list">${r.questions.map((q,i)=>{const a=avg(r.dist[i]);return`<div class="score"><div class="l"><span>${esc(q)}</span><b>${f1(a)}</b></div><div class="meter"><i style="width:${(a-1)/4*100}%"></i></div></div>`}).join('')}</div><p class="meta">${esc(r.label)} · cerrada el ${fdate(r.closed)} · ${r.n} respuestas${p?` (${p} del equipo)`:''} · escala de 1 a 5</p>`}
+function trend(o){const P=o.rounds.slice(-8);if(!P.length)return'<p class="empty">La tendencia aparecerá con la primera encuesta cerrada.</p>';
+  const Q=[];P.forEach(p=>p.questions.forEach(q=>{if(!Q.includes(q))Q.push(q)}));
+  const W=320,H=112,L=26,R=30,T=12,B=24,x=i=>P.length===1?(L+W-R)/2:L+i*(W-L-R)/(P.length-1),y=v=>T+(5-v)*(H-T-B)/4;
+  const charts=Q.map(q=>{const pts=P.map((p,i)=>{const j=p.questions.indexOf(q);return{i,p,asked:j>=0,v:j>=0&&p.dist?avg(p.dist[j]):null}});let d='',pen=false;pts.forEach(pt=>{if(pt.v==null){pen=false;return}d+=`${pen?'L':'M'}${x(pt.i).toFixed(1)} ${y(pt.v).toFixed(1)} `;pen=true});const last=[...pts].reverse().find(p=>p.v!=null);
+    return`<figure><figcaption>${esc(q)}</figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(q)}: ${pts.map(p=>p.p.label+' '+(!p.asked?'no se preguntó':p.v==null?'sin respuestas suficientes':f1(p.v))).join(', ')}">
+    ${[1,3,5].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`).join('')}
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map(p=>`<text x="${x(p.i)}" y="${H-6}" text-anchor="middle">E${p.p.k}</text>${p.v!=null?`<circle cx="${x(p.i)}" cy="${y(p.v)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${esc(p.p.label)}: ${f1(p.v)} (${p.p.n} respuestas)</title></circle>`:p.asked?`<circle cx="${x(p.i)}" cy="${y(3)}" r="4" fill="var(--surface)" stroke="var(--neutral-mark)" stroke-width="1.5"><title>${esc(p.p.label)}: sin respuestas suficientes (${p.p.n})</title></circle>`:''}`).join('')}
+    ${last?`<text class="val" x="${x(last.i)+9}" y="${y(last.v)+4}">${f1(last.v)}</text>`:''}</svg></figure>`}).join('');
+  const table=`<details><summary>Ver como tabla</summary><div class="tablewrap"><table><thead><tr><th class="wrapcell">Pregunta</th>${P.map(p=>`<th>E${p.k}</th>`).join('')}</tr></thead><tbody>${Q.map(q=>`<tr><td class="wrapcell">${esc(q)}</td>${P.map(p=>{const j=p.questions.indexOf(q);return`<td>${j<0?'—':p.dist?f1(avg(p.dist[j])):'Sin datos'}</td>`}).join('')}</tr>`).join('')}<tr><td class="wrapcell">Respuestas</td>${P.map(p=>`<td>${p.n}</td>`).join('')}</tr></tbody></table></div></details>`;
+  return`<div class="trend">${charts}</div>${table}<p class="meta">E1, E2… son las encuestas. Un círculo vacío marca una encuesta con menos de ${MIN} respuestas.</p>`}
+function exportPanel(o){return`<section class="panel"><h2>Exportar</h2><p class="lede">Las encuestas se exportan solo sumadas. Nunca incluyen respuestas individuales.</p><div class="row">${o?`<button class="btn ghost" data-act="exportItems">Acuerdos (CSV)</button><button class="btn ghost" data-act="exportPulse">Resultados de encuestas (CSV)</button>`:`<button class="btn ghost" data-act="exportAll">Consolidado de clientes (CSV)</button>`}</div>${ui.exportText!==null?`<label class="field" for="csv">${esc(ui.exportName)}: copia el contenido<textarea id="csv" readonly rows="6">${esc(ui.exportText)}</textarea></label><div class="row"><button class="btn small ghost" data-act="copyCsv">Copiar</button></div>`:''}</section>`}
+
+// ---------- Vistas ----------
+function vResumen(){const O=S.orgs,abiertas=O.filter(o=>o.open).length,arr=O.reduce((a,o)=>a+counts(o).arrastrado,0);
+  const ps=O.map(o=>lastR(o)).filter(r=>r&&r.expected).map(r=>r.n/r.expected),pm=ps.length?Math.round(ps.reduce((a,b)=>a+b,0)/ps.length*100)+'%':'—';
+  const Q=[];O.forEach(o=>{const r=lastR(o);if(r&&r.dist)r.questions.forEach(q=>{if(!Q.includes(q))Q.push(q)})});
+  return`<div class="head"><span class="eyebrow">Consultora</span><h1>Consolidado de clientes</h1><p class="lede">Lo que va pasando en todas las cuentas. Cada cliente ve solo lo suyo.</p></div>
+  <section class="panel"><div class="stats"><div class="stat"><span class="big">${O.length}</span><small>${O.length===1?'cliente':'clientes'}</small></div><div class="stat"><span class="big">${abiertas}</span><small>${abiertas===1?'encuesta abierta':'encuestas abiertas'}</small></div><div class="stat"><span class="big">${pm}</span><small>participación promedio en la última encuesta</small></div><div class="stat"><span class="big">${arr}</span><small>acuerdos se arrastran</small></div></div></section>
+  <section class="section"><h2>Cuentas</h2><div class="list">${O.length?O.map(o=>{const c=counts(o),r=lastR(o),g=general(r);
+    return`<article class="panel client"><div class="row between"><h2>${esc(o.name)}</h2><span class="chip ${c.arrastrado?'warn':'good'}">${c.arrastrado} se ${c.arrastrado===1?'arrastra':'arrastran'}</span></div>
+    <div class="stats"><div class="stat"><span class="big">${g==null?'—':f1(g)}</span><small>${r?(g==null?`${esc(r.label)}: sin respuestas suficientes`:`promedio de ${esc(r.label)}`):'sin encuestas cerradas'}</small></div><div class="stat"><span class="big">${r?pct(r.n,r.expected)||r.n:'—'}</span><small>participación</small></div></div>
+    <p class="meta">${o.open?`<span class="chip acc">${esc(o.open.label)} abierta · ${o.open.n}${o.size?' de '+o.size:''}</span>`:'<span class="chip">Sin encuesta abierta</span>'}<span>Última reunión: ${fdate(o.lastMeeting)}</span></p>${statusBar(o)}<div class="row"><button class="btn small" data-act="openOrg" data-v="${o.id}">Abrir cliente</button></div></article>`}).join(''):'<p class="empty">Aún no hay cuentas. Créalas en la planilla con «Agregar cuenta».</p>'}</div></section>
+  ${Q.length?`<section class="panel"><h2>Comparar la última encuesta</h2><div class="tablewrap"><table><thead><tr><th class="wrapcell">Pregunta</th>${O.map(o=>`<th>${esc(o.name)}</th>`).join('')}</tr></thead><tbody>${Q.map(q=>`<tr><td class="wrapcell">${esc(q)}</td>${O.map(o=>{const r=lastR(o),j=r?r.questions.indexOf(q):-1;return`<td>${r&&r.dist&&j>=0?f1(avg(r.dist[j])):'—'}</td>`}).join('')}</tr>`).join('')}</tbody></table></div><p class="meta">Promedios de 1 a 5. «—»: no se preguntó o hubo menos de ${MIN} respuestas.</p></section>`:''}
+  ${exportPanel(null)}`}
+function vPanel(){const o=org(),c=counts(o),r=lastR(o),g=general(r),stL=o.items.filter(stale).sort((a,b)=>b.carried-a.carried);
+  return`${head(o,'Resultados')}
+  <section class="panel"><div class="stats"><div class="stat"><span class="big">${g==null?'—':f1(g)}</span><small>promedio de la última encuesta</small></div><div class="stat"><span class="big">${r?pct(r.n,r.expected)||r.n:'—'}</span><small>participación${r?` (${r.n}${r.expected?' de '+r.expected:''})`:''}</small></div><div class="stat"><span class="big">${c.arrastrado}</span><small>acuerdos se arrastran</small></div><div class="stat"><span class="big">${c.cumplido}</span><small>cumplidos</small></div></div>${statusBar(o)}</section>
+  ${o.open?`<p class="meta"><span class="chip acc">${esc(o.open.label)} abierta</span><span>${o.open.n}${o.size?' de '+o.size:''} respuestas hasta ahora. Los resultados aparecen al cerrarla.</span></p>`:''}
+  <section class="panel"><h2>Última encuesta</h2>${scores(r)}</section>
+  <section class="panel"><h2>Tendencia</h2>${trend(o)}<p class="privacy">Solo se muestran promedios de encuestas cerradas con al menos ${MIN} respuestas. No existe una vista por persona.</p></section>
+  <section class="section"><h2>Lo que se arrastra</h2><div class="list">${stL.length?stL.map(i=>itemCard(o,i)).join(''):'<p class="empty">Nada se arrastra por ahora.</p>'}</div></section>
+  ${isC()?exportPanel(o):''}`}
+function vAcuerdos(){const o=org(),F=[['todos','Todos'],['arrastrados','Se arrastran'],['abiertos','Abiertos'],['cerrados','Cerrados']];
+  const list=o.items.filter(i=>ui.filter==='todos'||(ui.filter==='arrastrados'&&stale(i))||(ui.filter==='abiertos'&&i.status==='abierto')||(ui.filter==='cerrados'&&i.status!=='abierto'));
+  return`${head(o,'Decisiones y acuerdos',isC()?'Un solo registro, para que nadie dude dónde anotar.':'Solo lectura. La consultora mantiene este registro.')}${isC()?addForm():''}<div class="filters">${F.map(([k,v])=>`<button class="filter" data-act="filter" data-v="${k}" aria-pressed="${ui.filter===k}">${v}</button>`).join('')}</div><div class="list">${list.length?list.map(i=>itemCard(o,i)).join(''):'<p class="empty">No hay registros con este filtro.</p>'}</div>`}
+function vReunion(){const o=org(),st=o.items.filter(stale).sort((a,b)=>b.carried-a.carried),rest=o.items.filter(i=>i.status==='abierto'&&!stale(i));
+  return`${head(o,'Modo reunión','Última reunión: '+fdate(o.lastMeeting))}
+  <section class="panel"><h2>Última encuesta</h2>${scores(lastR(o))}</section>
+  <section class="section"><h2>Revisar primero (${st.length})</h2><div class="list">${st.length?st.map(i=>itemCard(o,i)).join(''):'<p class="empty">Nada se arrastra. Pueden pasar al tema central.</p>'}</div></section>
+  ${rest.length?`<section class="section"><h2>Abiertos al día (${rest.length})</h2><div class="list">${rest.map(i=>itemCard(o,i)).join('')}</div></section>`:''}
+  ${addForm()}
+  <section class="panel"><h2>Terminar la reunión</h2><p class="lede">Los acuerdos abiertos con fecha vencida sumarán una reunión de arrastre.</p><div class="row"><button class="btn" data-act="closeMeeting">Cerrar reunión</button></div></section>`}
+function qrSvg(text){try{const q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:4,scalable:true,title:'Código QR para responder la encuesta'})}catch(e){return'<p class="empty">No se pudo dibujar el QR. Comparte el enlace.</p>'}}
+function previewForm(p){return`<form id="pulse" class="panel preview" novalidate><span class="eyebrow">Vista previa · así lo ve el equipo</span><h2>Encuesta anónima del equipo</h2><p class="lede">No pedimos tu nombre ni guardamos datos de tu teléfono.</p>${p.questions.map((q,i)=>`<fieldset class="q"><legend>${esc(q)}</legend><div class="scale">${[1,2,3,4,5].map(v=>`<label><input type="radio" name="q${i}" id="q${i}-${v}" value="${v}" aria-label="${v}"><span>${v}</span></label>`).join('')}</div><div class="ends"><span>Nada</span><span>Totalmente</span></div></fieldset>`).join('')}${ui.pulseErr?`<p class="err">${esc(ui.pulseErr)}</p>`:''}<div class="row"><button class="btn" type="submit">Enviar respuesta</button><button class="btn ghost" type="button" data-act="preview">Cancelar</button></div></form>`}
+function vEncuesta(){const o=org(),p=o.open,r=lastR(o),nextK=(r?r.k:0)+1;let main;
+  if(p){const url=surveyUrl(o),falta=MIN-p.n;
+    main=`<section class="panel"><div class="row between"><h2>${esc(p.label)} abierta</h2><span class="meta">Desde el ${fdate(p.opened)}</span></div>
+    <div class="qr">${qrSvg(url)}</div>
+    <p class="lede">Muestra este código al equipo o comparte el enlace. Cada persona responde desde su teléfono, sin nombre, sin código y sin instalar nada.</p>
+    ${live()?'':'<p class="warnbox">Modo demo: este QR es de ejemplo y no recibe respuestas. Usa «Probar como integrante».</p>'}
+    <div class="row center"><button class="btn" data-act="share">Compartir enlace</button><button class="btn ghost" data-act="copyLink">Copiar enlace</button>${live()?'':`<button class="btn ghost" data-act="preview">Probar como integrante</button>`}</div>
+    <p class="link">${esc(url)}</p></section>
+    ${ui.preview&&!live()?previewForm(p):''}
+    <section class="panel"><h2>Participación</h2><div class="stat"><span class="big">${p.n}${o.size?'/'+o.size:''}</span><small>respuestas recibidas${live()?' · se actualiza sola cada 15 segundos':''}</small></div>${o.size?`<div class="meter"><i style="width:${Math.min(100,p.n/o.size*100)}%"></i></div>`:''}
+    <p class="lede">Los resultados aparecen al cerrar la encuesta, para que nadie deduzca una respuesta comparando antes y después. ${falta>0?`${falta===1?'Falta 1 respuesta':'Faltan '+falta+' respuestas'} para el mínimo de ${MIN}.`:'Ya se alcanzó el mínimo.'}</p>
+    ${ui.confirmClose?`<div class="confirm"><p><strong>¿Cerrar ${esc(p.label)}?</strong> El QR dejará de funcionar y los resultados quedarán guardados en la nube para la consultora.${p.n<MIN?` Con ${p.n} de ${MIN} respuestas mínimas no se guardarán resultados, solo la participación.`:''}</p><div class="row"><button class="btn" data-act="closeSurveyYes">Sí, cerrar y enviar</button><button class="btn ghost" data-act="closeSurveyNo">Cancelar</button></div></div>`:`<div class="row"><button class="btn" data-act="closeSurvey">Cerrar encuesta y enviar resultados</button></div>`}</section>`}
+  else main=`<section class="panel"><h2>No hay una encuesta abierta</h2><p class="lede">Al entregar la encuesta se genera un QR nuevo para el equipo. Se responde en menos de un minuto.</p><ol class="qs">${o.nextQuestions.map(q=>`<li>${esc(q)}</li>`).join('')}</ol><p class="meta">${o.size?`Se esperan ${o.size} respuestas.`:'La consultora aún no define el tamaño del equipo.'}${isC()?'':' Las preguntas las define la consultora.'}</p><div class="row"><button class="btn" data-act="openSurvey" ${o.nextQuestions.length?'':'disabled'}>Entregar encuesta ${nextK}</button></div></section>`;
+  const hist=o.rounds.length?`<details class="panel"><summary>Historial (${o.rounds.length})</summary><div class="tablewrap"><table><thead><tr><th>Encuesta</th><th>Apertura</th><th>Cierre</th><th>Respuestas</th></tr></thead><tbody>${o.rounds.slice().reverse().map(x=>`<tr><td>${esc(x.label)}</td><td>${fdate(x.opened)}</td><td>${fdate(x.closed)}</td><td>${x.n}${x.expected?' de '+x.expected:''}</td></tr>`).join('')}</tbody></table></div></details>`:'';
+  const cfg=isC()?`<details class="panel" ${ui.cfgErr?'open':''}><summary>Preguntas y tamaño del equipo</summary><form id="cfg" class="section" novalidate><p class="lede">Se usan desde la próxima encuesta. Escala de 1 (nada) a 5 (totalmente). Hasta ${MAXQ} preguntas.</p>${Array.from({length:MAXQ},(_,i)=>`<label class="field" for="cfg-${i}">Pregunta ${i+1}${i>0?' (opcional)':''}<input type="text" id="cfg-${i}" maxlength="140" value="${esc(o.nextQuestions[i]||'')}"></label>`).join('')}<label class="field" for="cfg-size">Personas que responderán<input type="number" id="cfg-size" min="0" max="5000" inputmode="numeric" value="${o.size||''}"></label><p class="meta">Se usa para calcular la participación y como tope de respuestas, ya que nadie se identifica.</p>${ui.cfgErr?`<p class="err">${esc(ui.cfgErr)}</p>`:''}<div class="row"><button class="btn small" type="submit">Guardar</button></div></form></details>`:'';
+  return`${head(o,'Encuesta del equipo')}${main}<section class="panel"><h2>Último resultado</h2>${scores(r)}</section>${hist}${cfg}`}
+// En el navegador, invita a instalarla antes de entrar: en iPhone, la versión agregada a la pantalla de inicio no comparte la sesión con Safari.
+function vInstalar(){if(INSTALADA)return'';
+  if(pedirInstalar)return`<section class="panel"><h2>Instala la app</h2><p class="lede">Queda un ícono en tu pantalla de inicio y se abre como cualquier app. Gratis y sin tienda de aplicaciones.</p><div class="row"><button class="btn" data-act="instalar">Instalar Punto de fluencia</button></div></section>`;
+  if(IOS)return`<section class="panel"><h2>Primero, instálala en tu iPhone</h2><ol class="qs"><li>Toca <strong>Compartir</strong> (el cuadrado con una flecha hacia arriba).</li><li>Elige <strong>Agregar a pantalla de inicio</strong> y luego <strong>Agregar</strong>.</li><li>Abre Punto de fluencia desde el ícono nuevo y entra ahí con tu código.</li></ol><p class="meta">Si no ves la opción, desliza la lista de acciones hacia arriba.</p></section>`;
+  return''}
+function vLogin(){return`<div class="head"><span class="eyebrow">Bienvenida</span><h1>Ingresa tu código personal</h1><p class="lede">La consultora entrega un código a cada responsable de cuenta. Queda guardado en este teléfono para que no tengas que escribirlo otra vez.</p></div>
+  ${vInstalar()}<form id="login" class="panel" novalidate><label class="field" for="l-code">Código personal<input type="text" id="l-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="PF-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" value="${esc(ui.loginCode)}"></label>${ui.loginErr?`<p class="err">${esc(ui.loginErr)}</p>`:''}<div class="row"><button class="btn" type="submit" ${ui.loginBusy?'disabled':''}>${ui.loginBusy?'Entrando…':'Entrar'}</button></div></form>
+  <section class="panel"><h2>¿Eres parte de un equipo?</h2><p class="lede">No necesitas esta app ni un código. Escanea con la cámara el QR que te muestre tu responsable y responde. Es anónimo.</p></section>
+  <section class="panel"><h2>¿Solo quieres mirar?</h2><p class="lede">El modo demo usa datos ficticios que quedan solo en este teléfono. No se comparte nada.</p><div class="row"><button class="btn ghost" data-act="demo">Probar modo demo</button></div></section>`}
+
+// ---------- Cabecera y render ----------
+function renderSelect(){const sel=document.getElementById('viewas');sel.innerHTML=`<option value="consultora">Consultora</option>`+S.orgs.map(o=>`<option value="ceo:${o.id}">CEO · ${esc(o.name)}</option>`).join('');sel.value=ui.me}
+function syncHtml(){const n=cola.length;let s;
+  if(n)s=`<span class="chip warn">Pendiente de sincronizar (${n})</span>`;
+  else if(net.estado==='sin_conexion')s='<span class="chip">Sin conexión · copia guardada</span>';
+  else if(net.estado==='enviando')s='<span class="chip">Sincronizando…</span>';
+  else s='<span class="chip good">Sincronizado</span>';
+  return`<span class="sync">${s}<button class="btn small ghost" data-act="sync">Actualizar</button></span>`}
+function renderTop(){const m=modo(),va=document.querySelector('.viewas'),who=document.getElementById('who'),nt=document.getElementById('notice');
+  va.hidden=m!=='demo';who.hidden=m!=='live';nt.hidden=m==='login';
+  if(m==='live')who.innerHTML=ui.confirmLogout?`<span>Hay ${cola.length} ${cola.length===1?'cambio':'cambios'} sin enviar. Si cierras sesión se pierden.</span><button class="btn small" data-act="logoutYes">Cerrar igual</button><button class="btn small ghost" data-act="logoutNo">Cancelar</button>`:`<span><b>${esc(S.yo.nombre)}</b> · ${ROL[S.yo.rol]||''}</span><button class="btn small ghost" data-act="logout">Cerrar sesión</button>`;
+  if(m==='demo'){document.getElementById('notice-txt').innerHTML='<strong>Modo demo.</strong> Datos ficticios que quedan solo en este teléfono. No ingreses datos reales.';
+    document.getElementById('reset').innerHTML=ui.confirmReset?`<span class="row"><button class="btn small" data-act="resetYes">Sí, reiniciar</button><button class="btn small ghost" data-act="resetNo">Cancelar</button></span>`:`<span class="row"><button class="btn small ghost" data-act="reset">Reiniciar datos</button><button class="btn small ghost" data-act="salirDemo">Salir del demo</button></span>`}
+  if(m==='live'){document.getElementById('notice-txt').textContent=isC()?'Los datos se guardan en la planilla de Google de la consultora. Este teléfono guarda una copia para usarla sin conexión.':'Vista de solo lectura de tu cuenta. Las encuestas son anónimas: nadie, ni tú ni la consultora, puede ver qué respondió cada persona.';
+    document.getElementById('reset').innerHTML=syncHtml()}}
+function render(){const a=document.activeElement,fid=a&&a.id;ui.renderPendiente=false;renderTop();
+  if(modo()==='login'){document.getElementById('nav').hidden=true;document.getElementById('main').innerHTML=vLogin();if(fid){const e=document.getElementById(fid);if(e)e.focus({preventScroll:true})}return}
+  if(!S.orgs.length){document.getElementById('nav').hidden=true;document.getElementById('main').innerHTML='<div class="head"><h1>Sin cuentas</h1><p class="lede">Todavía no hay cuentas asociadas a tu código. Avísale a la consultora.</p></div>';return}
+  document.getElementById('nav').hidden=false;
+  const tabs=TABS[role()];if(!tabs.some(t=>t[0]===ui.tab))ui.tab=tabs[0][0];
+  document.getElementById('tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab" data-act="tab" data-v="${k}" ${k===ui.tab?'aria-current="page"':''}>${v}</button>`).join('');
+  document.getElementById('main').innerHTML={resumen:vResumen,panel:vPanel,acuerdos:vAcuerdos,reunion:vReunion,encuesta:vEncuesta}[ui.tab]();
+  if(fid&&!['viewas','pick-org'].includes(fid)){const e=document.getElementById(fid);if(e)e.focus({preventScroll:true})}}
+
+// ---------- Sincronización: la cola se envía en orden; el estado del servidor reemplaza la copia local solo cuando la cola queda vacía. ----------
+const net={estado:'ok'};let sincronizando=false,reintento=null;
+function ocupado(){const a=document.activeElement;if(a&&a.closest&&a.closest('#main')&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName)&&a.id!=='csv')return true;const t=document.getElementById('f-text');if(t&&t.value.trim())return true;return!!ui.confirmClose}
+function safeRender(){if(ocupado()){ui.renderPendiente=true;renderTop();return}render()}
+async function llamar(cuerpo){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),30000);
+  try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(cuerpo),redirect:'follow',signal:ctl.signal});if(!r.ok)throw new Error('http');return await r.json()}finally{clearTimeout(t)}}
+function actualizarConteos(a){let cambio=false;S.orgs.forEach(o=>{if(o.open&&a[o.id]!=null&&a[o.id]!==o.open.n){o.open.n=a[o.id];cambio=true}});if(cambio)save();return cambio}
+function aplicarEstado(e){const act=S&&S.activeOrg;S=Object.assign({},e,{activeOrg:e.orgs.some(o=>o.id===act)?act:(e.orgs[0]||{}).id});yoUI();save()}
+const INVALIDO='Tu código ya no es válido. Pide uno nuevo a la consultora.';
+function cerrarSesion(msg){sesion=null;cola=[];S=null;guardarLS(SES,null);guardarLS(CACHE,null);guardarLS(COLA,null);Object.assign(ui,{me:'consultora',tab:'resumen',filter:'todos',confirmLogout:false,confirmClose:false,exportText:null,loginErr:msg||'',loginCode:''});render();window.scrollTo(0,0)}
+function enviar(accion,datos){if(!live())return;cola.push({opId:uid(),accion,datos});guardarLS(COLA,cola);sincronizar()}
+function programarReintento(){if(!reintento)reintento=setTimeout(()=>{reintento=null;sincronizar()},15000)}
+async function sincronizar(){if(!live()||sincronizando)return;sincronizando=true;net.estado='enviando';renderTop();
+  try{let ultimo=null;
+    while(cola.length){const op=cola[0],r=await llamar({codigo:sesion.codigo,accion:op.accion,datos:op.datos,opId:op.opId});
+      if(r.error==='codigo_invalido'){cerrarSesion(INVALIDO);return}
+      if(r.error==='ocupado'||r.error==='error_servidor')throw new Error('reintentar');
+      if(r.ok)ultimo=r.estado;else toast(`No se aplicó un cambio: ${r.mensaje||'error'}`);
+      cola.shift();guardarLS(COLA,cola)}
+    // Consulta liviana: si la revisión no cambió, el script solo informa cuántas respuestas lleva cada encuesta abierta.
+    if(!ultimo){const r=await llamar({codigo:sesion.codigo,accion:'estado',datos:{rev:S&&S.rev!=null?S.rev:null}});if(r.error==='codigo_invalido'){cerrarSesion(INVALIDO);return}if(!r.ok)throw new Error('reintentar');
+      if(r.igual){net.estado='ok';if(!cola.length&&actualizarConteos(r.abiertas||{}))safeRender();return}
+      ultimo=r.estado}
+    net.estado='ok';if(!cola.length){aplicarEstado(ultimo);safeRender()}}
+  catch(e){net.estado='sin_conexion';programarReintento()}
+  finally{sincronizando=false;if(live()){renderTop();if(cola.length&&net.estado==='ok')setTimeout(sincronizar,0)}}}
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3600)}
+
+// ---------- Exportar ----------
+const cell=v=>{let s=String(v);if(/^[=+\-@]/.test(s))s="'"+s;return`"${s.replace(/"/g,'""')}"`};
+const csv=rows=>'﻿'+rows.map(r=>r.map(cell).join(';')).join('\r\n');
+const slug=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').toLowerCase();
+function itemsCsv(o){return csv([['Tipo','Descripción','Responsable','Fecha de reunión','Fecha de compromiso','Estado','Reuniones arrastrado'],...o.items.map(i=>[i.type==='decision'?'Decisión':'Acuerdo',i.text,i.owner||'',i.meeting,i.due||'',ST[i.status],i.carried])])}
+function roundsRows(o){const rows=[];o.rounds.forEach(r=>r.questions.forEach((q,i)=>rows.push([o.name,r.label,r.opened,r.closed,r.n,r.expected||'',q,r.n<MIN?'Sin respuestas suficientes':r.dist?f1(avg(r.dist[i])):'Pendiente de sincronizar'])));return rows}
+const RH=['Cuenta','Encuesta','Apertura','Cierre','Respuestas','Esperadas','Pregunta','Promedio'];
+function pulseCsv(o){return csv([RH,...roundsRows(o)])}
+function allCsv(){return csv([RH,...S.orgs.flatMap(roundsRows)])}
+const dlP=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);
+async function exportCsv(name,data){const dl=await dlP;if(dl){try{await dl.save({filename:name,data});toast('Archivo listo');return}catch(e){if(e&&e.code==='declined')return;if(e&&e.code==='rate_limited'){toast('Hay otra descarga pendiente. Inténtalo en un momento.');return}}}
+  ui.exportText=data.replace(/^﻿/,'');ui.exportName=name;render()}
+async function copiar(texto){try{await navigator.clipboard.writeText(texto);toast('Enlace copiado');return true}catch(e){toast('No se pudo copiar. Mantén presionado el enlace para copiarlo.');return false}}
+
+// ---------- Eventos ----------
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,v=b.dataset.v;
+  if(act==='demo'){sesion={demo:true};guardarLS(SES,sesion);S=load();Object.assign(ui,{me:'consultora',tab:'resumen',loginErr:''});renderSelect();render();window.scrollTo(0,0);return}
+  if(act==='salirDemo'){sesion=null;guardarLS(SES,null);S=null;ui.confirmReset=false;render();window.scrollTo(0,0);return}
+  if(act==='logout'){if(cola.length){ui.confirmLogout=true;renderTop()}else cerrarSesion();return}
+  if(act==='logoutNo'){ui.confirmLogout=false;renderTop();return}
+  if(act==='logoutYes'){cerrarSesion();return}
+  if(act==='sync'){sincronizar();return}
+  if(act==='instalar'&&pedirInstalar){const p=pedirInstalar;pedirInstalar=null;try{await p.prompt()}catch(err){}render();return}
+  if(!S)return;const o=org();
+  if(act==='tab'){ui.tab=v;ui.formErr='';ui.pulseErr='';ui.cfgErr='';ui.exportText=null;ui.confirmClose=false;ui.preview=false;render();window.scrollTo(0,0)}
+  if(act==='filter'){ui.filter=v;render()}
+  if(act==='openOrg'){S.activeOrg=v;ui.tab='panel';ui.exportText=null;save();render();window.scrollTo(0,0)}
+  if(act==='reset'){ui.confirmReset=true;render()}
+  if(act==='resetNo'){ui.confirmReset=false;render()}
+  if(act==='resetYes'){S=seed();ui.confirmReset=false;ui.preview=false;save();renderSelect();render();toast('Datos de ejemplo restablecidos')}
+  if(act==='closeMeeting'){enviar('cerrarReunion',{organizacion:o.id,ultimaReunionVista:o.lastMeeting});let n=0;o.items.forEach(i=>{if(i.status==='abierto'&&i.due&&i.due<=today()){i.carried++;n++}});o.lastMeeting=today();save();render();toast(n?`${n} ${n===1?'acuerdo se arrastra':'acuerdos se arrastran'} a la próxima reunión`:'Reunión cerrada. Nada se arrastra.')}
+  if(act==='openSurvey'&&!o.open){const r=lastR(o),k=(r?r.k:0)+1,token=uid();o.open={k,label:'Encuesta '+k,opened:today(),token,questions:[...o.nextQuestions],n:0};if(!live())o.open.counts=o.open.questions.map(()=>[0,0,0,0,0]);
+    save();enviar('abrirEncuesta',{organizacion:o.id,token});render();window.scrollTo(0,0);toast(`Encuesta ${k} entregada. Muestra el QR al equipo.`)}
+  if(act==='closeSurvey'){ui.confirmClose=true;render()}
+  if(act==='closeSurveyNo'){ui.confirmClose=false;render()}
+  if(act==='closeSurveyYes'&&o.open){const p=o.open,r={k:p.k,label:p.label,opened:p.opened,closed:today(),n:p.n,expected:o.size,questions:p.questions,dist:null};
+    if(!live()&&p.n>=MIN)r.dist=p.counts;o.rounds.push(r);o.open=null;ui.confirmClose=false;ui.preview=false;save();enviar('cerrarEncuesta',{organizacion:o.id,encuesta:p.k});render();
+    toast(p.n>=MIN?`${p.label} cerrada. Resultados enviados.`:`${p.label} cerrada sin respuestas suficientes.`)}
+  if(act==='share'&&o.open){const url=surveyUrl(o);if(navigator.share){try{await navigator.share({title:'Encuesta del equipo',text:`Encuesta anónima de ${o.name}. No pide tu nombre:`,url});return}catch(err){if(err&&err.name==='AbortError')return}}copiar(url)}
+  if(act==='copyLink'&&o.open)copiar(surveyUrl(o));
+  if(act==='preview'){ui.preview=!ui.preview;ui.pulseErr='';render();if(ui.preview){const f=document.getElementById('pulse');if(f)f.scrollIntoView({block:'start'})}}
+  if(act==='exportItems')exportCsv(`acuerdos-${slug(o.name)}.csv`,itemsCsv(o));
+  if(act==='exportPulse')exportCsv(`encuestas-${slug(o.name)}.csv`,pulseCsv(o));
+  if(act==='exportAll')exportCsv('consolidado-clientes.csv',allCsv());
+  if(act==='copyCsv'){const t=document.getElementById('csv');try{await navigator.clipboard.writeText(t.value);toast('Copiado')}catch(err){t.focus();t.select();toast('Texto seleccionado. Cópialo manualmente.')}}
+});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='viewas'){ui.me=t.value;ui.tab=TABS[role()][0][0];ui.filter='todos';ui.formErr='';ui.pulseErr='';ui.cfgErr='';ui.exportText=null;ui.confirmReset=false;ui.confirmClose=false;ui.preview=false;render();window.scrollTo(0,0);return}
+  if(t.id==='pick-org'){S.activeOrg=t.value;ui.exportText=null;ui.confirmClose=false;ui.preview=false;save();t.blur();render();return}
+  if(t.dataset.status&&isC()){const it=org().items.find(i=>i.id===t.dataset.status);it.status=t.value;save();enviar('estadoAcuerdo',{id:it.id,estado:t.value});t.blur();render();toast(`Estado actualizado: ${ST[t.value]}`)}});
+document.addEventListener('submit',e=>{e.preventDefault();const f=e.target;
+  if(f.id==='login'){const c=f.querySelector('#l-code').value.trim();ui.loginCode=c;if(!c){ui.loginErr='Escribe tu código.';render();return}
+    if(!API){ui.loginErr='Esta versión de la app no tiene configurado el servidor.';render();return}
+    ui.loginBusy=true;ui.loginErr='';render();
+    llamar({codigo:c,accion:'estado'}).then(r=>{ui.loginBusy=false;
+      if(!r.ok){ui.loginErr=r.error==='codigo_invalido'?'Ese código no es válido o fue revocado. Revísalo o pide uno nuevo a la consultora.':(r.mensaje||'No se pudo entrar.');render();return}
+      // Pide al navegador que no borre la sesión guardada por falta de uso.
+      try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(err){}
+      sesion={codigo:c};guardarLS(SES,sesion);cola=[];guardarLS(COLA,cola);S=null;aplicarEstado(r.estado);net.estado='ok';Object.assign(ui,{tab:TABS[role()][0][0],loginCode:'',loginErr:''});render();window.scrollTo(0,0)})
+    .catch(()=>{ui.loginBusy=false;ui.loginErr='No hay conexión con el servidor. Para entrar la primera vez necesitas internet.';render()});return}
+  if(!S)return;const o=org();
+  if(f.id==='add'&&isC()){const text=f.querySelector('#f-text').value.trim(),type=f.querySelector('#f-type').value,due=f.querySelector('#f-due').value,owner=f.querySelector('#f-owner').value.trim();if(!text){ui.formErr='Escribe una descripción para guardar.';render();return}if(type==='acuerdo'&&!due){ui.formErr='Un acuerdo necesita fecha de compromiso.';render();return}ui.formErr='';const id=live()?'n'+uid():'n'+(++S.seq);o.items.unshift({id,type,text,owner,meeting:today(),due:due||null,status:'abierto',carried:0});save();enviar('crearAcuerdo',{organizacion:o.id,id,tipo:type,texto:text,responsable:owner,fechaCompromiso:due||''});f.reset();render();toast('Guardado en el registro')}
+  if(f.id==='pulse'&&o.open&&!live()){const p=o.open,a=p.questions.map((_,i)=>{const c=f.querySelector(`input[name=q${i}]:checked`);return c?+c.value:null});
+    if(a.includes(null)){ui.pulseErr='Responde todas las preguntas para enviar.';render();a.forEach((v,i)=>{if(v){const r=document.getElementById(`q${i}-${v}`);if(r)r.checked=true}});return}
+    if(o.size&&p.n>=o.size){ui.preview=false;render();toast('Ya se recibieron todas las respuestas esperadas.');return}
+    ui.pulseErr='';a.forEach((v,i)=>p.counts[i][v-1]++);p.n++;ui.preview=false;save();render();toast('Respuesta de prueba enviada, sin nombre')}
+  if(f.id==='cfg'&&isC()){const q=Array.from({length:MAXQ},(_,i)=>f.querySelector(`#cfg-${i}`).value.trim()).filter(Boolean),sz=f.querySelector('#cfg-size').value.trim(),n=sz===''?0:Number(sz);
+    if(!q.length){ui.cfgErr='Escribe al menos una pregunta.';render();return}if(!(n>=0&&n<=5000&&Number.isInteger(n))){ui.cfgErr='El número de personas debe ser un entero entre 0 y 5000.';render();return}
+    ui.cfgErr='';o.nextQuestions=q.map(x=>x.replace(/\|/g,'/'));o.size=n;save();enviar('guardarCuenta',{organizacion:o.id,preguntas:o.nextQuestions,integrantes:n});render();toast(o.open?'Guardado. Las preguntas se usarán desde la próxima encuesta.':'Guardado')}
+});
+addEventListener('online',()=>sincronizar());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sincronizar()});
+document.addEventListener('focusout',()=>setTimeout(()=>{if(ui.renderPendiente&&!ocupado())render()},300));
+// Con una encuesta abierta en pantalla, la participación se actualiza cada 15 segundos; si no, cada minuto.
+// Son consultas livianas: el script no lee la planilla si nada cambió.
+let tic=0;setInterval(()=>{tic++;if(document.visibilityState!=='visible')return;const enc=S&&S.orgs&&S.orgs.length&&ui.tab==='encuesta'&&org()&&org().open;if(enc||tic%4===0)sincronizar()},15000);
+if(modo()==='live'&&!S)cerrarSesion('La app se actualizó. Ingresa tu código otra vez.');
+if(modo()==='demo')renderSelect();
+render();sincronizar();
+</script>
+</body>
+</html>

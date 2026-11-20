@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Encuesta del equipo · Punto de fluencia</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<style>
+/* Encuesta pública del QR. Página liviana: sin fuentes externas, sin cookies, sin analítica. */
+:root{--bg:#F2F5EF;--surface:#FFFFFF;--line:#CFD6CA;--ink:#241A26;--muted:#625866;--accent:#7A2E63;--accent-ink:#FFFFFF;--bad:#AE342D;--skel:#E8ECE4}
+@media (prefers-color-scheme:dark){:root{--bg:#171419;--surface:#221D25;--line:#433B47;--ink:#F1EBF1;--muted:#B5A9B6;--accent:#E79BD1;--accent-ink:#2A1025;--bad:#F59289;--skel:#2D2730;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left));display:grid;gap:18px}
+h1{font-size:1.45rem;line-height:1.2;margin:0;text-wrap:balance}p{margin:0}
+.brand{display:flex;gap:8px;align-items:center;font-weight:700}.brand svg{width:30px;height:22px}
+.lede{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:18px}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:8px;min-width:0}legend{font-weight:600;margin-bottom:8px;padding:0}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.scale label{position:relative}
+.scale input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.scale span{display:grid;place-items:center;height:50px;border:1px solid var(--line);border-radius:6px;font-weight:700;background:var(--surface)}
+.scale input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.scale input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.ends{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted)}
+button{font:inherit;font-weight:700;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:12px 16px;min-height:48px;cursor:pointer;width:100%}
+button.ghost{background:transparent;color:var(--accent)}button[disabled]{opacity:.6;cursor:default}
+.err{color:var(--bad);font-weight:600}.priv{font-size:.88rem;color:var(--muted)}
+.skel{height:18px;border-radius:4px;background:var(--skel)}.skel.big{height:50px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><svg viewBox="0 0 60 44" aria-hidden="true"><path d="M3 41 L24 11 C30 5 42 6 57 9" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="24" cy="11" r="5" fill="var(--accent)"/></svg><span>Punto de fluencia</span></div>
+  <div><p class="lede" id="cuenta">Encuesta del equipo</p><h1 id="titulo">Encuesta anónima del equipo</h1></div>
+  <p class="lede" id="intro">No pedimos tu nombre ni guardamos datos de tu teléfono. Solo se suman los resultados del equipo, y se muestran cuando hay al menos 5 respuestas.</p>
+  <div class="panel" id="cargando" aria-busy="true" aria-label="Cargando la encuesta"><div class="skel"></div><div class="skel big"></div><div class="skel"></div><div class="skel big"></div></div>
+  <div class="panel" id="ya" hidden><p><b>Ya respondiste desde este teléfono.</b> Gracias.</p><button type="button" class="ghost" id="otra">Otra persona va a responder en este teléfono</button></div>
+  <form class="panel" id="f" novalidate hidden><div id="preguntas" style="display:grid;gap:18px"></div><p class="err" id="err" role="alert" hidden></p><button type="submit" id="enviar">Enviar respuesta</button></form>
+  <div class="panel" id="listo" hidden><h1>Gracias</h1><p>Tu respuesta se sumó a las del equipo, sin tu nombre.</p></div>
+  <div class="panel" id="aviso" hidden><h1 id="aviso-t"></h1><p class="lede" id="aviso-p"></p><button type="button" class="ghost" id="reintentar" hidden>Intentar de nuevo</button></div>
+  <p class="priv">Este teléfono solo recuerda que ya respondiste esta encuesta, para no contar dos veces. No guarda tus respuestas.</p>
+</main>
+<script src="config.js"></script>
+<script>
+(function(){
+  // El enlace va después del «#»: así no viaja al servidor del sitio web ni queda en sus registros.
+  var m=(location.hash+'&'+location.search).match(/[#?&]r=([A-Za-z0-9]{20,40})/),T=m?m[1]:'',API=window.PF_API_URL||'',K='pf-respondida-'+T;
+  var $=function(id){return document.getElementById(id)},f=$('f'),err=$('err'),btn=$('enviar'),N=0;
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function ya(){try{return localStorage.getItem(K)==='1'}catch(e){return false}}
+  function marcar(){try{localStorage.setItem(K,'1')}catch(e){}}
+  function mostrar(id){['cargando','ya','f','listo','aviso'].forEach(function(x){$(x).hidden=x!==id})}
+  function aviso(t,p,reintentar){$('aviso-t').textContent=t;$('aviso-p').textContent=p;$('reintentar').hidden=!reintentar;mostrar('aviso')}
+  // Pedido al script de Google. Reintenta solo si está ocupado o falló la red (muchos responden a la vez).
+  function llamar(cuerpo,intentos){
+    return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(cuerpo),redirect:'follow',credentials:'omit'})
+      .then(function(r){if(!r.ok)throw new Error('http');return r.json()})
+      .then(function(r){if(r&&(r.error==='ocupado'||r.error==='error_servidor')&&intentos>1)return espera(intentos).then(function(){return llamar(cuerpo,intentos-1)});return r},
+        function(e){if(intentos>1)return espera(intentos).then(function(){return llamar(cuerpo,intentos-1)});throw e});
+  }
+  function espera(i){return new Promise(function(ok){setTimeout(ok,800*(5-i)+Math.random()*1200)})}
+  function cerrada(){aviso('Esta encuesta ya cerró','El enlace no es válido o la encuesta terminó. Si crees que es un error, pide el QR nuevo a tu responsable.',false)}
+  function cargar(){
+    if(!T||!API){cerrada();return}
+    mostrar('cargando');
+    llamar({accion:'encuesta',datos:{token:T}},4).then(function(r){
+      // Script de Google anterior a la versión 3 (no conoce esta página): se usa su encuesta propia.
+      if(r&&r.error==='codigo_invalido'){location.replace(API+'?r='+T);return}
+      if(!r||!r.ok){r&&r.error==='encuesta_cerrada'?cerrada():aviso('No se pudo abrir la encuesta','Inténtalo de nuevo en un momento.',true);return}
+      N=r.preguntas.length;
+      $('cuenta').textContent=r.cuenta+' · '+r.etiqueta;
+      $('intro').textContent='No pedimos tu nombre ni guardamos datos de tu teléfono. Solo se suman los resultados del equipo, y se muestran cuando hay al menos '+r.minimo+' respuestas.';
+      $('preguntas').innerHTML=r.preguntas.map(function(q,i){return'<fieldset><legend>'+esc(q)+'</legend><div class="scale">'+[1,2,3,4,5].map(function(v){return'<label><input type="radio" name="q'+i+'" value="'+v+'" aria-label="'+v+'"><span>'+v+'</span></label>'}).join('')+'</div><div class="ends"><span>Nada</span><span>Totalmente</span></div></fieldset>'}).join('');
+      mostrar(ya()?'ya':'f');
+    },function(){aviso('Sin conexión','Revisa tu internet e inténtalo de nuevo.',true)});
+  }
+  $('otra').onclick=function(){mostrar('f')};
+  $('reintentar').onclick=cargar;
+  f.onsubmit=function(e){e.preventDefault();var a=[];
+    for(var i=0;i<N;i++){var c=f.querySelector('input[name=q'+i+']:checked');if(!c){err.textContent='Responde todas las preguntas para enviar.';err.hidden=false;return}a.push(+c.value)}
+    err.hidden=true;btn.disabled=true;btn.textContent='Enviando…';
+    llamar({accion:'responder',datos:{token:T,respuestas:a}},5).then(function(r){
+      btn.disabled=false;btn.textContent='Enviar respuesta';
+      if(r&&r.ok){marcar();mostrar('listo');window.scrollTo(0,0);return}
+      if(r&&r.error==='encuesta_cerrada'){cerrada();return}
+      err.textContent=(r&&r.mensaje)||'No se pudo enviar. Inténtalo de nuevo.';err.hidden=false;
+    },function(){btn.disabled=false;btn.textContent='Enviar respuesta';err.textContent='No se pudo enviar. Revisa tu conexión e inténtalo de nuevo; tus respuestas siguen marcadas.';err.hidden=false});
+  };
+  cargar();
+})();
+</script>
+</body>
+</html>
